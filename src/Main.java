@@ -8,15 +8,8 @@ public class Main {
         Scanner scanner=new Scanner(System.in);
         String s;
         Tokenizer tokenizer=Tokenizer.getInstance();
-        do{
-            s=scanner.next();
-            System.out.println(Tokenizer.determinerTree.search(s));
-        }
-        while (!s.equals("-1"));
-        /*
         InputEditor inputEditor=InputEditor.getInstance();
-        inputEditor.showEditor();
+        inputEditor.showEditor(tokenizer);
         Keywords keywords=Keywords.getInstance();
-        */
     }
 }

@@ -1,15 +1,16 @@
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.function.Function;
+import java.util.Set;
+
 
 /**
  * Created by vivek on 08-01-2017.
+ * Used to break sentences to Tokens.
  */
-public class Tokenizer {
+class Tokenizer {
 
     /**Return Tokenizer Instance
-     *
      * @return instance of Tokenizer
      */
     static Tokenizer getInstance(){return new Tokenizer();}
@@ -20,12 +21,18 @@ public class Tokenizer {
                                     ,{"FEW","n"},{"SOME","n"},{"ATLEAST","k"},{"ATMOST","k"}
                                     ,{"ONLY","k"},{"NONE","0"},{"OTHER","l"}};
     //Determiner Tree
-    static Tree determinerTree;
+    private Tree determinerTree;
 
     //Array of Entities;
     private HashMap<String,Entity> entities;
-    private Relation relation=new Relation();
+    private HashMap<String,Integer> entityCount;
+    private ArrayList<Relation> relations=new ArrayList<>();
+    private Relation relation;
     private String[] words;
+    private boolean ambiguous;
+    private boolean attached;
+    private boolean conjuncion;
+
     private Tokenizer(){
         determinerTree=new Tree();
         for(String [] a:array)
@@ -45,109 +52,104 @@ public class Tokenizer {
      */
     void analyzeSentence(String sentence) {
         words = sentence.split(" ");
-        boolean ambiguous = false, attached = false, conjuncion = false;
-        for (int i = 0; i < words.length; i++) {
-
-            //Store Multiplicity----------------------------------------------------------------------------------------
-
-            int determiner = findDeterminer(words, i);
-            if (determiner == -1)
-                ambiguous = true;
-            else if (determiner > 0) {
-                //Multiplicity integer
-            } else {
-                //multiplicity
-            }
-            if (ambiguous)
-                i++;
-
+        relation=new Relation();
+        ambiguous=false;
+        conjuncion=false;
+        attached=false;
+        for (int i = 0; i < words.length;) {
             //Store Entity----------------------------------------------------------------------------------------------
             switch (checkEntity(i)) {
-                case 0:ambiguous = true;
-                        break;
-                case 1:relation.addEntity(storeEntity(words[i]));
-                        break;
-                case 2:if((relation.getType()==0)||(relation.getType()==3)) {
-                        storeAttribute(words[i], relation.getEntity());
+                case 0:
+                    ambiguous = true;
+                    break;
+                case 1:
+                    relation.addEntity(storeEntity(words[i++]));
+                    break;
+                case 2:
+                    if ((relation.getType() == 0) || (relation.getType() == 3)) {
+                        storeAttribute(words[i++], relation.getEntity());
                         relation.setType(3);
-                    }
-                    else ambiguous=true;
+                    } else ambiguous = true;
                     break;
             }
 
 
-            //Store Relation--------------------------------------------------------------------------------------------
-            StringBuilder stringBuilder=new StringBuilder();
-            while((findDeterminer(words,i)==-1)&&(checkEntity(i)==0)) {
+            //Identity Relation-----------------------------------------------------------------------------------------
+            StringBuilder stringBuilder = new StringBuilder();
+            while ((i < words.length) && (checkEntity(i) == 0)) {
                 stringBuilder.append(words[i]).append(" ");
                 i++;
             }
-            String rel=stringBuilder.toString();
-            if(rel.equals("and")){
-                getPhrase(relation.getType(),i,ambiguous);
-            }
-            else if(rel.equals("are")){
-                relation.setType(1);
-            }
-            else relation.storeRelation(stringBuilder.toString());
+            String verb = stringBuilder.toString();
 
+            //Store Relation -------------------------------------------------------------------------------------------
+
+            switch (verb){
+                case ""     :break;
+                case "and"  :if (conjuncion) getPhrase(relation.getType(), i);
+                            else {
+                                conjuncion = true;
+                                getPhrase(relation.getType(), i);
+                               }
+                            break;
+                case "are"  :if (attached) {
+
+                            } else {
+                                attached = true;
+                                relation.setType(1);
+                            }
+                            break;
+                default:    relation.storeRelation(verb);
+            }
         }
+        relations.add(relation);
     }
 
-    private void getPhrase(int type, int i, boolean ambiguous) {
-        int determiner = findDeterminer(words, i);
-        if (determiner == -1)
-            ambiguous = true;
-        else if (determiner > 0) {
-            //Multiplicity integer
-        } else {
-            //multiplicity
-        }
-        if (ambiguous)
-            i++;
+    private void getPhrase(int type, int i) {
 
-        //Store Entity----------------------------------------------------------------------------------------------
-        switch (checkEntity(i)) {
-            case 0:ambiguous = true;
-                break;
-            case 1:relation.addEntity(storeEntity(words[i]));
-                break;
-            case 2:if((relation.getType()==0)||(relation.getType()==3)) {
-                storeAttribute(words[i], relation.getEntity());
-                relation.setType(3);
-            }
-            else ambiguous=true;
-                break;
-        }
-
-
-        //Store Relation--------------------------------------------------------------------------------------------
-        StringBuilder stringBuilder=new StringBuilder();
-        while((findDeterminer(words,i)==-1)&&(checkEntity(i)==0)) {
-            stringBuilder.append(words[i]).append(" ");
-            i++;
-        }
     }
 
     private void storeAttribute(String word, Entity entity) {
-
+        if((entity==null)){
+            Entity entity1=new Entity("NAN");
+            entity1.addAttribute(word);
+            relation.addEntity(entity1);
+            entities.put("NAN",entity1);
+        }
+        else
+            entity.addAttribute(word);
+        relation.addAttribute(word);
     }
 
     private Entity storeEntity(String word) {
-        return entities.computeIfAbsent(word, s -> entities.put(s,new Entity(s)));
+        Entity entity=relation.getEntity();
+        if((entity!=null)&&(entity.name.equals("NAN"))){
+            entity.name=word;
+            entityCount.replace(word,entityCount.get(word)+1);
+            return entity;
+        }
+        if(!entities.containsKey(word)) {
+            entities.put(word, new Entity(word));
+            entityCount.put(word,1);
+        }
+        else entityCount.replace(word,entityCount.get(word)+1);
+        return entities.get(word);
     }
 
     private int checkEntity(int i) {
         //Check Determiner
         if(findDeterminer(words,i)==-1) {
             int j=0;
-            while((words[i].charAt(j)< 93) && (words[i].charAt(j) > 64))
+            while((j<words[i].length())&&(words[i].charAt(j)< 93) && (words[i].charAt(j) > 64))
                 j++;
             if(j==1)
                 return 2;
             if(j==words[i].length())
                 return 1;
             return 0;
+        }
+        else {
+            //Store Multiplicity
         }
         return 0;
     }
@@ -157,7 +159,7 @@ public class Tokenizer {
         int temp=-1;
         try {
             temp=Integer.parseInt(words[i]);
-        }catch (NumberFormatException e){e.printStackTrace();};
+        }catch (NumberFormatException e){System.out.println(words[i]);};
         if (temp==-1) {
             String determiner = determinerTree.search(words[i]);
             switch (determiner) {
@@ -170,6 +172,26 @@ public class Tokenizer {
             }
         }
         return temp;
+    }
+
+    void removeRelation() {
+        Relation r=relations.get(relations.size()-1);
+        ArrayList<Entity> e=r.getRelation();
+        if(e.size()==1){
+            Entity entity=e.get(0);
+            entity.removeAttributes(r.getAttributes());
+        }
+        else {
+            for (Entity ent :e) {
+                String s = ent.name;
+                if (entityCount.get(s) == 1) {
+                    entities.remove(s);
+                    entityCount.remove(s);
+                }
+                entityCount.replace(s,entityCount.get(s)-1);
+            }
+        }
+        relations.remove(r);
     }
 }
 
@@ -230,36 +252,49 @@ class Tree{
 }
 
 class Entity{
-    private String name;
+    String name;
     private HashSet<String> attributes;
     Entity(String entity){
         name=entity;
         attributes=new HashSet<>();
     }
 
-    boolean addAttribute(String att){
-        return attributes.add(att);
-    }
+    boolean addAttribute(String att){return attributes.add(att);}
 
-    int getSize(){
-        return attributes.size();
-    }
+    void removeAttributes(HashSet<String> attributes) {this.attributes.removeAll(attributes);}
+
+    int getSize(){return attributes.size();}
 }
 
-/**
- * type stores the type of relation
- * 1 : Aggregation
- * 2 : Association
- * 3 : Attribute (No Relation)
- */
+
 class Relation{
+    /**
+     * type stores the type of relation
+     * 1 : Aggregation
+     * 2 : Association
+     * 3 : Attribute (No Relation).
+     */
     private int type=0;
+
+    /**
+     * Stores The Entities in a relation
+     */
     private ArrayList<Entity> arrayList=new ArrayList<>();
+    private HashSet<String> attribute=new HashSet<>();
+
     private String relation="";
+
     void addEntity(Entity entity){arrayList.add(entity);}
+    void addAttribute(String att){attribute.add(att);}
+
+    Entity getEntity() {return arrayList.size()>0?arrayList.get(arrayList.size()-1):null;}
+
     ArrayList<Entity> getRelation(){return arrayList;}
+
     void setType(int type){this.type=type;}
-    Entity getEntity() {return arrayList.get(arrayList.size()-1);}
+
     int getType() {return type;}
+
+    HashSet<String> getAttributes(){return attribute;}
     void storeRelation(String s){relation=s;}
 }

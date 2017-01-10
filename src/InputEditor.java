@@ -28,6 +28,8 @@ public class InputEditor extends JFrame{
     private Component vstrut,hstrut;
     private Keywords keywords;
     private JPanel centre;
+    private Tokenizer tokenizer;
+
     private InputEditor(){
         super("untitled");
         sentences=new SentenceArray();
@@ -45,8 +47,10 @@ public class InputEditor extends JFrame{
                     length=d.getLength();
                     if(d.getText(length-1,1).equals(FULLSTOP)){
                         int start=sentences.getSentenceStart(sentences.getSentenceCount());
-                        sentences.add(d.getText(start,length-start-1),length-1);
-                        System.out.println(sentences.getSentence(sentences.getSentenceCount()-1));
+                        String s=d.getText(start,length-start-1);
+                        sentences.add(s,length-1);
+                        System.out.println(s);
+                        tokenizer.analyzeSentence(s);
                         Runnable doHighlight = new Runnable() {
                             @Override
                             public void run() {
@@ -63,8 +67,10 @@ public class InputEditor extends JFrame{
             public void removeUpdate(DocumentEvent e) {
                 Document d=e.getDocument();
                 length=d.getLength();
-                while(length<(sentences.getSentenceStart(sentences.getSentenceCount())))
+                while(length<(sentences.getSentenceStart(sentences.getSentenceCount()))) {
+                    tokenizer.removeRelation();
                     sentences.remove();
+                }
                 System.out.println("Len"+length);
             }
 
@@ -85,11 +91,10 @@ public class InputEditor extends JFrame{
         textArea.setMinimumSize(new Dimension(500,750));
         centre=new JPanel(new GridBagLayout());
     }
-    static InputEditor getInstance(){
-        return new InputEditor();
-    }
+    static InputEditor getInstance(){return new InputEditor();}
 
-    void showEditor() {
+    void showEditor(Tokenizer tokenizer) {
+        this.tokenizer=tokenizer;
         contentPane.add(vstrut,BorderLayout.NORTH);
         contentPane.add(hstrut,BorderLayout.WEST);
         GridBagConstraints bagConstraints=new GridBagConstraints();
