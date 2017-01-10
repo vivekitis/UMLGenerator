@@ -29,6 +29,7 @@ public class InputEditor extends JFrame{
     private Keywords keywords;
     private JPanel centre;
     private Tokenizer tokenizer;
+    private JScrollPane textScroll;
 
     private InputEditor(){
         super("untitled");
@@ -36,6 +37,7 @@ public class InputEditor extends JFrame{
         setSize(800,800);
         keywords=Keywords.getInstance();
         textArea=new JTextArea();
+        textScroll=new JScrollPane(textArea);
         contentPane=getContentPane();
         textArea.setBorder(new BevelBorder(BevelBorder.LOWERED));
         textArea.getDocument().addDocumentListener(new DocumentListener() {
@@ -101,7 +103,7 @@ public class InputEditor extends JFrame{
         bagConstraints.fill=GridBagConstraints.BOTH;
         bagConstraints.weightx=0.67;
         bagConstraints.weighty=0;
-        centre.add(textArea,bagConstraints);
+        centre.add(textScroll,bagConstraints);
         bagConstraints.weightx=0.33;
         bagConstraints.weighty=1;
         centre.add(keywords,bagConstraints);
@@ -132,7 +134,7 @@ class SentenceArray{
         sentences.add(s);
         starts.add(end+1);
         //System.out.println("Start "+starts.get(sentence_count));
-        ends.add(end);
+        //ends.add(end);
     }
 
     int getSentenceCount(){return sentence_count;}
@@ -146,6 +148,6 @@ class SentenceArray{
         starts.remove(sentence_count);
         sentence_count--;
         sentences.remove(sentence_count);
-        ends.remove(sentence_count);
+        //ends.remove(sentence_count);
     }
 }

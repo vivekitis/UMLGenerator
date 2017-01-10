@@ -1,7 +1,4 @@
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 
 /**
@@ -16,7 +13,7 @@ class Tokenizer {
     static Tokenizer getInstance(){return new Tokenizer();}
 
     //List if Determiners
-    private static String[][] array={{"THE","1"},{"A","1"},{"AN","1"}
+    private static String[][] array={{"THE","1"},{"A","1"},{"AN","1"},{"EACH","1"}
                                     ,{"ANY","n"},{"ALL","n"},{"EVERY","n"}
                                     ,{"FEW","n"},{"SOME","n"},{"ATLEAST","k"},{"ATMOST","k"}
                                     ,{"ONLY","k"},{"NONE","0"},{"OTHER","l"}};
@@ -32,12 +29,15 @@ class Tokenizer {
     private boolean ambiguous;
     private boolean attached;
     private boolean conjuncion;
+    private int currentWord;
+    private int undefineCount=0;
 
     private Tokenizer(){
         determinerTree=new Tree();
         for(String [] a:array)
             determinerTree.insertWord(a[0],a[1]);
         entities=new HashMap<>();
+        entityCount=new HashMap<>();
     }
 
     /**
@@ -51,23 +51,26 @@ class Tokenizer {
      * @param sentence sentence to analyze
      */
     void analyzeSentence(String sentence) {
+        sentence=sentence.trim();
         words = sentence.split(" ");
         relation=new Relation();
         ambiguous=false;
         conjuncion=false;
         attached=false;
-        for (int i = 0; i < words.length;) {
+        for (currentWord = 0; currentWord < words.length;) {
             //Store Entity----------------------------------------------------------------------------------------------
-            switch (checkEntity(i)) {
+            switch (checkEntity()) {
                 case 0:
                     ambiguous = true;
                     break;
                 case 1:
-                    relation.addEntity(storeEntity(words[i++]));
+                    relation.addEntity(storeEntity(words[currentWord++]));
+                    if((relation.getRelation().size()>1)&&(relation.getType()!=3))
+                        relation.setType(2);
                     break;
                 case 2:
                     if ((relation.getType() == 0) || (relation.getType() == 3)) {
-                        storeAttribute(words[i++], relation.getEntity());
+                        storeAttribute(words[currentWord++], relation.getEntity());
                         relation.setType(3);
                     } else ambiguous = true;
                     break;
@@ -76,9 +79,8 @@ class Tokenizer {
 
             //Identity Relation-----------------------------------------------------------------------------------------
             StringBuilder stringBuilder = new StringBuilder();
-            while ((i < words.length) && (checkEntity(i) == 0)) {
-                stringBuilder.append(words[i]).append(" ");
-                i++;
+            while ((currentWord < words.length) && (checkEntity() == 0)) {
+                stringBuilder.append(words[currentWord++]).append(" ");
             }
             String verb = stringBuilder.toString();
 
@@ -86,10 +88,11 @@ class Tokenizer {
 
             switch (verb){
                 case ""     :break;
-                case "and"  :if (conjuncion) getPhrase(relation.getType(), i);
+                case "and"  :if (conjuncion) getPhrase(relation.getType());
                             else {
+
                                 conjuncion = true;
-                                getPhrase(relation.getType(), i);
+                                getPhrase(relation.getType());
                                }
                             break;
                 case "are"  :if (attached) {
@@ -99,31 +102,41 @@ class Tokenizer {
                                 relation.setType(1);
                             }
                             break;
-                default:    relation.storeRelation(verb);
+                default:    {
+                    if((relation.getType()==0)||(relation.getType()==2)) {
+                        //relation.setType(2);
+                        relation.storeRelation(verb);
+                    }
+                    else ambiguous=true;
+                }
             }
         }
         relations.add(relation);
+        System.out.println(relation);
     }
 
-    private void getPhrase(int type, int i) {
+    private void getPhrase(int type) {
 
     }
 
     private void storeAttribute(String word, Entity entity) {
         if((entity==null)){
-            Entity entity1=new Entity("NAN");
+            Entity entity1=new Entity("N*N"+(++undefineCount));
+            undefineCount++;
             entity1.addAttribute(word);
             relation.addEntity(entity1);
             entities.put("NAN",entity1);
         }
         else
             entity.addAttribute(word);
+        new KeywordLabel(word,2);
         relation.addAttribute(word);
     }
 
     private Entity storeEntity(String word) {
         Entity entity=relation.getEntity();
-        if((entity!=null)&&(entity.name.equals("NAN"))){
+        if((entity!=null)&&(entity.name.startsWith("N*N"))){
+            undefineCount--;
             entity.name=word;
             entityCount.replace(word,entityCount.get(word)+1);
             return entity;
@@ -133,35 +146,39 @@ class Tokenizer {
             entityCount.put(word,1);
         }
         else entityCount.replace(word,entityCount.get(word)+1);
+        new KeywordLabel(word,1);
         return entities.get(word);
     }
 
-    private int checkEntity(int i) {
+    private int checkEntity() {
         //Check Determiner
-        if(findDeterminer(words,i)==-1) {
-            int j=0;
-            while((j<words[i].length())&&(words[i].charAt(j)< 93) && (words[i].charAt(j) > 64))
-                j++;
-            if(j==1)
-                return 2;
-            if(j==words[i].length())
-                return 1;
-            return 0;
+        int determiner=findDeterminer();
+        if(determiner!=-1) {
+            currentWord++;
+            if(determiner>=0){
+
+            }
+            else if(determiner<0){
+
+            }
         }
-        else {
-            //Store Multiplicity
-        }
+
+        int j=0;
+        while((j<words[currentWord].length())&&(words[currentWord].charAt(j)< 93) && (words[currentWord].charAt(j) > 64))
+            j++;
+        if(j==1)
+            return 2;
+        if(j==words[currentWord].length())
+            return 1;
         return 0;
     }
 
 
-    private int findDeterminer(String[] words, int i){
+    private int findDeterminer(){
         int temp=-1;
-        try {
-            temp=Integer.parseInt(words[i]);
-        }catch (NumberFormatException e){System.out.println(words[i]);};
-        if (temp==-1) {
-            String determiner = determinerTree.search(words[i]);
+        try {temp=Integer.parseInt(words[currentWord]);}
+        catch (NumberFormatException e){
+            String determiner = determinerTree.search(words[currentWord].toUpperCase());
             switch (determiner) {
                 case "1":return 1;
                 case "":return -1;
@@ -187,8 +204,12 @@ class Tokenizer {
                 if (entityCount.get(s) == 1) {
                     entities.remove(s);
                     entityCount.remove(s);
+                    Keywords.removeClass(s);
+                    HashSet<String> set=ent.getAttributes();
+                    for(String s2:set)
+                        Keywords.removeAttributes(s2);
                 }
-                entityCount.replace(s,entityCount.get(s)-1);
+                else entityCount.replace(s,entityCount.get(s)-1);
             }
         }
         relations.remove(r);
@@ -263,7 +284,16 @@ class Entity{
 
     void removeAttributes(HashSet<String> attributes) {this.attributes.removeAll(attributes);}
 
-    int getSize(){return attributes.size();}
+    HashSet<String> getAttributes(){return attributes;}
+
+    @Override
+    public String toString() {
+        StringBuilder stringBuilder=new StringBuilder();
+        stringBuilder.append("Class ").append(name).append("\nAttribute");
+        for(String att:attributes)
+            stringBuilder.append(" ").append(att);
+        return stringBuilder.toString();
+    }
 }
 
 
@@ -297,4 +327,25 @@ class Relation{
 
     HashSet<String> getAttributes(){return attribute;}
     void storeRelation(String s){relation=s;}
+
+    @Override
+    public String toString() {
+        StringBuilder stringBuilder=new StringBuilder();
+        if(type==1){
+            stringBuilder.append("Aggregation between : ");
+            for (Entity entity:arrayList)
+                stringBuilder.append(entity.name).append(" ");
+        }
+        else if(type==2){
+            stringBuilder.append("Class ").append(arrayList.get(0).name)
+                    .append("\nRelation ").append(relation)
+                    .append("\nClass ").append(arrayList.get(1).name);
+        }
+        else {
+            stringBuilder.append("Class ").append(arrayList.get(0).name).append("\nAttributes");
+            for (String att : attribute)
+                stringBuilder.append(" ").append(att);
+        }
+        return stringBuilder.toString();
+    }
 }
