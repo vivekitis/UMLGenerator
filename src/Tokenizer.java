@@ -127,9 +127,10 @@ class Tokenizer {
             relation.addEntity(entity1);
             entities.put("NAN",entity1);
         }
-        else
+        else {
             entity.addAttribute(word);
-        new KeywordLabel(word,2);
+            Keywords.addAttribute(new KeywordLabel(word),entity.name);
+        }
         relation.addAttribute(word);
     }
 
@@ -146,7 +147,7 @@ class Tokenizer {
             entityCount.put(word,1);
         }
         else entityCount.replace(word,entityCount.get(word)+1);
-        new KeywordLabel(word,1);
+        Keywords.addClass(new KeywordLabel(word));
         return entities.get(word);
     }
 
@@ -196,7 +197,11 @@ class Tokenizer {
         ArrayList<Entity> e=r.getRelation();
         if(e.size()==1){
             Entity entity=e.get(0);
+            r.getAttributes().forEach(s -> Keywords.removeAttributes(s+entity.name));
             entity.removeAttributes(r.getAttributes());
+            if(entityCount.get(entity.name)==1){
+                Keywords.removeClass(entity.name);
+            }
         }
         else {
             for (Entity ent :e) {
@@ -205,9 +210,7 @@ class Tokenizer {
                     entities.remove(s);
                     entityCount.remove(s);
                     Keywords.removeClass(s);
-                    HashSet<String> set=ent.getAttributes();
-                    for(String s2:set)
-                        Keywords.removeAttributes(s2);
+                    ent.getAttributes().forEach(s1 -> Keywords.removeAttributes(s1+ent.name));
                 }
                 else entityCount.replace(s,entityCount.get(s)-1);
             }

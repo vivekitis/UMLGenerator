@@ -3,6 +3,8 @@ import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.security.Key;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Random;
 
 /**
  * Created by vivek on 07-01-2017.
@@ -18,8 +20,25 @@ class Keywords extends JPanel{
     private static JPanel Aggregations;
     private static HashMap<String,KeywordLabel> AggregationIndex;
     private TitledBorder title;
+    private static int ColorCount=12;
+    private static Color[] Colors=new Color[ColorCount];
+    private static boolean[] SelectedColor=new boolean[ColorCount];
+    private static Random random;
     private Keywords(){
         super(new GridBagLayout());
+        random=new Random(System.currentTimeMillis());
+        Colors[0]=Color.orange;
+        Colors[1]=Color.cyan;
+        Colors[2]=Color.blue;
+        Colors[3]=Color.darkGray;
+        Colors[4]=Color.gray;
+        Colors[5]=Color.green;
+        Colors[6]=Color.lightGray;
+        Colors[7]=Color.yellow;
+        Colors[8]=Color.magenta;
+        Colors[9]=Color.red;
+        Colors[10]=Color.pink;
+        Colors[11]=Color.white;
         GridBagConstraints gridBagConstraints=new GridBagConstraints();
         gridBagConstraints.fill=GridBagConstraints.BOTH;
         gridBagConstraints.weightx=0;
@@ -56,18 +75,25 @@ class Keywords extends JPanel{
         AggregationIndex=new HashMap<>();
     }
 
-    static void addClass(KeywordLabel keywordLabel){
-        if(!ClassIndex.containsKey(keywordLabel.toString())) {
+    static void addClass(KeywordLabel keywordLabel) {
+        if (!ClassIndex.containsKey(keywordLabel.toString())) {
+            int i = random.nextInt(ColorCount);
+            while (SelectedColor[i])
+                i=random.nextInt(ColorCount);
+            SelectedColor[i] = true;
+            keywordLabel.setColor(i);
+            keywordLabel.setBackground(Colors[i]);
             Classes.add(keywordLabel);
             ClassIndex.put(keywordLabel.toString(), keywordLabel);
             Classes.revalidate();
         }
     }
 
-    static void addAttribute(KeywordLabel keywordLabel) {
-        if(!AttributeIndex.containsKey(keywordLabel.toString())) {
+    static void addAttribute(KeywordLabel keywordLabel, String name) {
+        if (!AttributeIndex.containsKey(keywordLabel.toString()+name)) {
+            keywordLabel.setBackground(Colors[ClassIndex.get(name).getColor()]);
             Attributes.add(keywordLabel);
-            AttributeIndex.put(keywordLabel.toString(), keywordLabel);
+            AttributeIndex.put(keywordLabel.toString()+name, keywordLabel);
             Attributes.revalidate();
         }
     }
@@ -87,25 +113,26 @@ class Keywords extends JPanel{
     }
 }
 
-class KeywordLabel extends JTextArea{
+class KeywordLabel extends JLabel{
     private String label;
-    private int type;
+    private int color;
 
-    KeywordLabel(String label,int type){
-        super(label,1,label.length());
-        setOpaque(false);
-        setEditable(false);
+    KeywordLabel(String label){
+        super(label);
+        setOpaque(true);
         this.label=label;
-        switch (type){
-            case 1:Keywords.addClass(this);
-                break;
-            case 2:Keywords.addAttribute(this);
-                break;
-        }
     }
 
     @Override
     public String toString() {
         return label;
+    }
+
+    void setColor(int color) {
+        this.color = color;
+    }
+
+    int getColor() {
+        return color;
     }
 }

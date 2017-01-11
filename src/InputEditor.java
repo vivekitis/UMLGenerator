@@ -73,7 +73,7 @@ public class InputEditor extends JFrame{
                     tokenizer.removeRelation();
                     sentences.remove();
                 }
-                System.out.println("Len"+length);
+                //System.out.println("Len"+length);
             }
 
             @Override
