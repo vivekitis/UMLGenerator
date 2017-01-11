@@ -53,13 +53,7 @@ public class InputEditor extends JFrame{
                         sentences.add(s,length-1);
                         System.out.println(s);
                         tokenizer.analyzeSentence(s);
-                        Runnable doHighlight = new Runnable() {
-                            @Override
-                            public void run() {
-                                textArea.insert(" ",length);
-                            }
-                        };
-                        SwingUtilities.invokeLater(doHighlight);
+                        SwingUtilities.invokeLater(()->textArea.insert("",length));
                     }
                 }
                 catch (BadLocationException e1) {e1.printStackTrace();}
@@ -106,7 +100,7 @@ public class InputEditor extends JFrame{
         centre.add(textScroll,bagConstraints);
         bagConstraints.weightx=0.33;
         bagConstraints.weighty=1;
-        centre.add(keywords,bagConstraints);
+        centre.add(keywords.getScroll(),bagConstraints);
         contentPane.add(centre,BorderLayout.CENTER);
         contentPane.add(vstrut,BorderLayout.SOUTH);
         contentPane.add(hstrut, BorderLayout.EAST);

@@ -11,6 +11,7 @@ import java.util.Random;
  * Utility for the keyword panel
  */
 class Keywords extends JPanel{
+    private static JScrollPane jScrollPane;
     private static JPanel Ambiguous;
     private static HashMap<String,KeywordLabel> AmbiguousIndex;
     private static JPanel Classes;
@@ -20,7 +21,7 @@ class Keywords extends JPanel{
     private static JPanel Aggregations;
     private static HashMap<String,KeywordLabel> AggregationIndex;
     private TitledBorder title;
-    private static int ColorCount=12;
+    private static int ColorCount=11;
     private static Color[] Colors=new Color[ColorCount];
     private static boolean[] SelectedColor=new boolean[ColorCount];
     private static Random random;
@@ -30,7 +31,7 @@ class Keywords extends JPanel{
         Colors[0]=Color.orange;
         Colors[1]=Color.cyan;
         Colors[2]=Color.blue;
-        Colors[3]=Color.darkGray;
+        Colors[3]=Color.white;
         Colors[4]=Color.gray;
         Colors[5]=Color.green;
         Colors[6]=Color.lightGray;
@@ -38,41 +39,42 @@ class Keywords extends JPanel{
         Colors[8]=Color.magenta;
         Colors[9]=Color.red;
         Colors[10]=Color.pink;
-        Colors[11]=Color.white;
+        setMinimumSize(new Dimension(250,750));
+        setPreferredSize(new Dimension(250,750));
         GridBagConstraints gridBagConstraints=new GridBagConstraints();
         gridBagConstraints.fill=GridBagConstraints.BOTH;
         gridBagConstraints.weightx=0;
         gridBagConstraints.weighty=1;
-        setMinimumSize(new Dimension(250,750));
         Classes=new JPanel();
-        title = BorderFactory.createTitledBorder("Classes");
-        Classes.setBorder(title);
         gridBagConstraints.gridx=0;
         gridBagConstraints.gridy=0;
         gridBagConstraints.gridwidth=2;
+        title = BorderFactory.createTitledBorder("Classes");
+        Classes.setBorder(title);
         add(Classes,gridBagConstraints);
         Attributes = new JPanel();
+        gridBagConstraints.gridy=1;
         title = BorderFactory.createTitledBorder("Attributes");
         Attributes.setBorder(title);
-        gridBagConstraints.gridy=1;
         add(Attributes,gridBagConstraints);
         Ambiguous = new JPanel();
-        title = BorderFactory.createTitledBorder("Ambiguous");
-        Ambiguous.setBorder(title);
         gridBagConstraints.gridy=2;
         gridBagConstraints.weightx=0.5;
         gridBagConstraints.gridwidth=1;
+        title = BorderFactory.createTitledBorder("Ambiguous");
+        Ambiguous.setBorder(title);
         add(Ambiguous,gridBagConstraints);
         Aggregations = new JPanel();
+        gridBagConstraints.gridx=1;
         title=BorderFactory.createTitledBorder("Aggregations");
         Aggregations.setBorder(title);
-        gridBagConstraints.gridx=1;
         add(Aggregations,gridBagConstraints);
         setVisible(true);
         AmbiguousIndex=new HashMap<>();
         AttributeIndex=new HashMap<>();
         ClassIndex=new HashMap<>();
         AggregationIndex=new HashMap<>();
+        jScrollPane=new JScrollPane(this);
     }
 
     static void addClass(KeywordLabel keywordLabel) {
@@ -85,16 +87,16 @@ class Keywords extends JPanel{
             keywordLabel.setBackground(Colors[i]);
             Classes.add(keywordLabel);
             ClassIndex.put(keywordLabel.toString(), keywordLabel);
-            Classes.revalidate();
+            SwingUtilities.invokeLater(()->Classes.revalidate());
         }
     }
 
     static void addAttribute(KeywordLabel keywordLabel, String name) {
-        if (!AttributeIndex.containsKey(keywordLabel.toString()+name)) {
+        if (!AttributeIndex.containsKey(keywordLabel.toString()+" "+name)) {
             keywordLabel.setBackground(Colors[ClassIndex.get(name).getColor()]);
             Attributes.add(keywordLabel);
-            AttributeIndex.put(keywordLabel.toString()+name, keywordLabel);
-            Attributes.revalidate();
+            AttributeIndex.put(keywordLabel.toString()+" "+name, keywordLabel);
+            SwingUtilities.invokeLater(()->Attributes.revalidate());
         }
     }
 
@@ -103,14 +105,16 @@ class Keywords extends JPanel{
     static void removeClass(String s) {
         Classes.remove(ClassIndex.get(s));
         ClassIndex.remove(s);
-        Classes.revalidate();
+        SwingUtilities.invokeLater(()->{Classes.revalidate();Classes.repaint();});
     }
 
     static void removeAttributes(String s){
         Attributes.remove(AttributeIndex.get(s));
         AttributeIndex.remove(s);
-        Attributes.revalidate();
+        SwingUtilities.invokeLater(() -> {Attributes.revalidate();Attributes.repaint();});
     }
+
+    JScrollPane getScroll(){return jScrollPane;}
 }
 
 class KeywordLabel extends JLabel{
