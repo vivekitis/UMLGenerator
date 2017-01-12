@@ -1,23 +1,18 @@
-import javax.imageio.plugins.jpeg.JPEGHuffmanTable;
 import javax.swing.*;
 import javax.swing.border.BevelBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.plaf.BorderUIResource;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import java.awt.*;
 import java.awt.event.KeyEvent;
-import java.lang.reflect.Array;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
-
-import static java.awt.GridBagConstraints.REMAINDER;
 
 /**
  * Created by vivek on 05-01-2017.
+ * Input Panel for User.
  */
-public class InputEditor extends JFrame{
+class InputEditor extends JFrame{
 
     private int length=0;
     private SentenceArray sentences;
@@ -50,7 +45,7 @@ public class InputEditor extends JFrame{
                     if(d.getText(length-1,1).equals(FULLSTOP)){
                         int start=sentences.getSentenceStart(sentences.getSentenceCount());
                         String s=d.getText(start,length-start-1);
-                        sentences.add(s,length-1);
+                        sentences.add(length-1);
                         System.out.println(s);
                         tokenizer.analyzeSentence(s);
                         SwingUtilities.invokeLater(()->textArea.insert("",length));
@@ -64,7 +59,7 @@ public class InputEditor extends JFrame{
                 Document d=e.getDocument();
                 length=d.getLength();
                 while(length<(sentences.getSentenceStart(sentences.getSentenceCount()))) {
-                    tokenizer.removeRelation();
+                    tokenizer.removeLastRelation();
                     sentences.remove();
                 }
                 //System.out.println("Len"+length);
@@ -110,38 +105,33 @@ public class InputEditor extends JFrame{
 }
 
 class SentenceArray{
-    private ArrayList<String> sentences;
+    //private ArrayList<String> sentences;
     private ArrayList<Integer> starts;
-    private ArrayList<Integer> ends;
     private int sentence_count;
 
     SentenceArray(){
-        sentences=new ArrayList<>();
+        //sentences=new ArrayList<>();
         starts=new ArrayList<>();
-        ends=new ArrayList<>();
         sentence_count=0;
         starts.add(0);
     }
 
-    void add(String s,int end){
+    void add(int end){
         sentence_count++;
-        sentences.add(s);
+        //sentences.add(s);
         starts.add(end+1);
-        //System.out.println("Start "+starts.get(sentence_count));
-        //ends.add(end);
     }
 
     int getSentenceCount(){return sentence_count;}
 
     int getSentenceStart(int n){return starts.get(n);}
 
-    String getSentence(int n){return sentences.get(n);}
+    //String getSentence(int n){return sentences.get(n);}
 
     void remove() {
         System.out.println("Remove");
         starts.remove(sentence_count);
         sentence_count--;
-        sentences.remove(sentence_count);
-        //ends.remove(sentence_count);
+        //sentences.remove(sentence_count);
     }
 }

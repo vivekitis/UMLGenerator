@@ -1,9 +1,6 @@
 import javax.swing.*;
-import javax.swing.border.TitledBorder;
 import java.awt.*;
-import java.security.Key;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Random;
 
 /**
@@ -20,7 +17,6 @@ class Keywords extends JPanel{
     private static HashMap<String,KeywordLabel> AttributeIndex;
     private static JPanel Aggregations;
     private static HashMap<String,KeywordLabel> AggregationIndex;
-    private TitledBorder title;
     private static int ColorCount=11;
     private static Color[] Colors=new Color[ColorCount];
     private static boolean[] SelectedColor=new boolean[ColorCount];
@@ -49,25 +45,21 @@ class Keywords extends JPanel{
         gridBagConstraints.gridx=0;
         gridBagConstraints.gridy=0;
         gridBagConstraints.gridwidth=2;
-        title = BorderFactory.createTitledBorder("Classes");
-        Classes.setBorder(title);
+        Classes.setBorder(BorderFactory.createTitledBorder("Classes"));
         add(Classes,gridBagConstraints);
         Attributes = new JPanel();
         gridBagConstraints.gridy=1;
-        title = BorderFactory.createTitledBorder("Attributes");
-        Attributes.setBorder(title);
+        Attributes.setBorder(BorderFactory.createTitledBorder("Attributes"));
         add(Attributes,gridBagConstraints);
         Ambiguous = new JPanel();
         gridBagConstraints.gridy=2;
         gridBagConstraints.weightx=0.5;
         gridBagConstraints.gridwidth=1;
-        title = BorderFactory.createTitledBorder("Ambiguous");
-        Ambiguous.setBorder(title);
+        Ambiguous.setBorder(BorderFactory.createTitledBorder("Ambiguous"));
         add(Ambiguous,gridBagConstraints);
         Aggregations = new JPanel();
         gridBagConstraints.gridx=1;
-        title=BorderFactory.createTitledBorder("Aggregations");
-        Aggregations.setBorder(title);
+        Aggregations.setBorder(BorderFactory.createTitledBorder("Aggregations"));
         add(Aggregations,gridBagConstraints);
         setVisible(true);
         AmbiguousIndex=new HashMap<>();

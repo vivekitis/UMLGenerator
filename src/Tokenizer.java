@@ -13,10 +13,15 @@ class Tokenizer {
     static Tokenizer getInstance(){return new Tokenizer();}
 
     //List if Determiners
-    private static String[][] array={{"THE","1"},{"A","1"},{"AN","1"},{"EACH","1"}
+    private static String[][] array={{"THE","1"},{"A","1"},{"AN","1"}
                                     ,{"ANY","n"},{"ALL","n"},{"EVERY","n"}
-                                    ,{"FEW","n"},{"SOME","n"},{"ATLEAST","k"},{"ATMOST","k"}
-                                    ,{"ONLY","k"},{"NONE","0"},{"OTHER","l"}};
+                                    ,{"FEW","n"},{"SOME","n"}
+                                    ,{"AT","m"},{"LEAST","m"},{"MOST","m"}
+                                    ,{"ATLEAST","q-"},{"ATMOST","q+"}
+                                    ,{"ONLY","k"},{"NONE","0"},{"OTHER","l"}
+                                    ,{"BETWEEN","r"},{"FROM","r"}
+                                    ,{"OR","o"},{"TO","o"}
+                                    ,{"EACH","e"}};
     //Determiner Tree
     private Tree determinerTree;
 
@@ -27,8 +32,6 @@ class Tokenizer {
     private Relation relation;
     private String[] words;
     private boolean ambiguous;
-    private boolean attached;
-    private boolean conjuncion;
     private int currentWord;
     private int undefineCount=0;
 
@@ -55,71 +58,84 @@ class Tokenizer {
         words = sentence.split(" ");
         relation=new Relation();
         ambiguous=false;
-        conjuncion=false;
-        attached=false;
+
         for (currentWord = 0; currentWord < words.length;) {
             //Store Entity----------------------------------------------------------------------------------------------
-            switch (checkEntity()) {
-                case 0:
-                    ambiguous = true;
-                    break;
-                case 1:
-                    relation.addEntity(storeEntity(words[currentWord++]));
-                    if((relation.getRelation().size()>1)&&(relation.getType()!=3))
-                        relation.setType(2);
-                    break;
-                case 2:
-                    if ((relation.getType() == 0) || (relation.getType() == 3)) {
-                        storeAttribute(words[currentWord++], relation.getEntity());
-                        relation.setType(3);
-                    } else ambiguous = true;
-                    break;
+            getPhrase();
+            if(ambiguous) {
+                //Undo Changes
+                removeRelation(relation);
+                return;
             }
-
-
             //Identity Relation-----------------------------------------------------------------------------------------
-            StringBuilder stringBuilder = new StringBuilder();
-            while ((currentWord < words.length) && (checkEntity() == 0)) {
-                stringBuilder.append(words[currentWord++]).append(" ");
+            String verb=getVerb();
+            if(ambiguous) {
+                //Undo Changes
+                removeRelation(relation);
+                return;
             }
-            String verb = stringBuilder.toString();
 
             //Store Relation -------------------------------------------------------------------------------------------
+            saveRelation(verb);
 
-            switch (verb){
-                case ""     :break;
-                case "and"  :if (conjuncion) getPhrase(relation.getType());
-                            else {
-
-                                conjuncion = true;
-                                getPhrase(relation.getType());
-                               }
-                            break;
-                case "are"  :if (attached) {
-
-                            } else {
-                                attached = true;
-                                relation.setType(1);
-                            }
-                            break;
-                default:    {
-                    if((relation.getType()==0)||(relation.getType()==2)) {
-                        //relation.setType(2);
-                        relation.storeRelation(verb);
-                    }
-                    else ambiguous=true;
-                }
-            }
         }
         relations.add(relation);
         System.out.println(relation);
     }
 
-    private void getPhrase(int type) {
-
+    private void getPhrase() {
+        switch (checkEntity()) {
+            case 0:
+                ambiguous = true;
+                break;
+            case 1:
+                relation.addEntity(storeEntity(words[currentWord++]));
+                if((relation.getRelation().size()>1)&&(relation.getType()!=3))
+                    relation.setType(2);
+                break;
+            case 2:
+                if ((relation.getType() == 0) || (relation.getType() == 3)) {
+                    storeAttribute(words[currentWord++], relation.getEntity());
+                    relation.setType(3);
+                } else ambiguous = true;
+                break;
+        }
     }
 
+    private String getVerb(){
+        StringBuilder stringBuilder = new StringBuilder();
+        while (!ambiguous&&(currentWord < words.length) && (checkEntity() == 0)) {
+            stringBuilder.append(words[currentWord++]).append(" ");
+        }
+        return stringBuilder.toString();
+    }
+
+    private void saveRelation(String verb){
+        switch (verb.trim()){
+            case ""     :break;
+            case "and"  :getPhrase();
+                        if(ambiguous) {
+                            removeRelation(relation);
+                            return;
+                        }
+                        saveRelation(getVerb());
+                        break;
+            case "are"  :relation.setType(1);
+                        break;
+            default:    {
+                    if((relation.getType()==0)||(relation.getType()==2)) {
+                        //relation.setType(2);
+                        relation.storeRelation(verb);
+                    }
+                    else ambiguous=true;
+            }
+        }
+    }
+
+
     private void storeAttribute(String word, Entity entity) {
+        if(ambiguous)
+            return;
         if((entity==null)){
             Entity entity1=new Entity("N*N"+(++undefineCount));
             undefineCount++;
@@ -135,6 +151,8 @@ class Tokenizer {
     }
 
     private Entity storeEntity(String word) {
+        if(ambiguous)
+            return null;
         Entity entity=relation.getEntity();
         if((entity!=null)&&(entity.name.startsWith("N*N"))){
             undefineCount--;
@@ -156,14 +174,80 @@ class Tokenizer {
         int determiner=findDeterminer();
         if(determiner!=-1) {
             currentWord++;
-            if(determiner>=0){
-
+            if(determiner>0){
+                if(currentWord<words.length) {
+                    int _determiner = findDeterminer();
+                    if(_determiner<-3){
+                        currentWord++;
+                        if(currentWord<words.length) {
+                            int __determiner = findDeterminer();
+                            if (__determiner < 0) ambiguous = true;
+                            else currentWord++;
+                        }
+                        else ambiguous=true;
+                    }
+                    else if(_determiner!=-1) ambiguous=true;
+                    else relation.addMultiplicity(String.valueOf(determiner));
+                }
+                else ambiguous=true;
             }
-            else if(determiner<0){
-
+            else if(determiner<=0){
+                if(determiner==0){
+                    relation.addMultiplicity(String.valueOf(0));
+                }
+                else if(determiner==-2){
+                    if(currentWord<words.length) {
+                        int _determiner = findDeterminer();
+                        if(_determiner>0) relation.addMultiplicity(String.valueOf(_determiner));
+                        else ambiguous=true;
+                    }
+                    else ambiguous=true;
+                }
+                else if(determiner>-6){
+                    if(currentWord<words.length) {
+                        int _determiner=findDeterminer();
+                        if(_determiner>0)
+                            relation.addAttribute(determiner == -4 ? ("1.." + _determiner) : (_determiner + "..n"));
+                        else ambiguous=true;
+                    }
+                    else ambiguous=true;
+                 }
+                else if (determiner==-7){
+                    if(currentWord<words.length) {
+                        int _determiner = findDeterminer();     //number
+                        if(_determiner>0){
+                            currentWord++;
+                            if(currentWord<words.length) {
+                                int __determiner = findDeterminer();    //to
+                                if (__determiner != -6) ambiguous = true;
+                                else {
+                                    currentWord++;
+                                    if(currentWord<words.length) {
+                                        int ___determiner = findDeterminer();   //number
+                                        relation.addMultiplicity(_determiner+".."+___determiner);
+                                        currentWord++;
+                                    }
+                                    else ambiguous=true;
+                                }
+                            }
+                            else ambiguous=true;
+                        }
+                        else if(_determiner!=-1) ambiguous=true;
+                        else relation.addMultiplicity(String.valueOf(determiner));
+                    }
+                    else ambiguous=true;
+                }
+                else if(determiner==-8){
+                    if(currentWord<words.length){
+                        int _determiner=findDeterminer();
+                        if(_determiner==-3) relation.storeRelation("r");
+                        else relation.addMultiplicity(String.valueOf("1.."));
+                    }
+                }
             }
         }
-
+        if(ambiguous)
+            return 0;
         int j=0;
         while((j<words[currentWord].length())&&(words[currentWord].charAt(j)< 93) && (words[currentWord].charAt(j) > 64))
             j++;
@@ -176,24 +260,43 @@ class Tokenizer {
 
 
     private int findDeterminer(){
-        int temp=-1;
+        int temp;
         try {temp=Integer.parseInt(words[currentWord]);}
         catch (NumberFormatException e){
             String determiner = determinerTree.search(words[currentWord].toUpperCase());
             switch (determiner) {
                 case "1":return 1;
                 case "":return -1;
-                case "n":
+                case "n":return -8;
                 case "k":return -2;
                 case "0":return 0;
                 case "l":return -3;
+                case "m":currentWord++;
+                        if(currentWord<words.length) {
+                            if (words[currentWord].toUpperCase().equals("MOST")) return -4;
+                            else if(words[currentWord].toUpperCase().equals("LEAST")) return -5;
+                            return -1;
+                        }
+                        return -1;
+                case "q-":return -5;
+                case "q+":return -4;
+                case "o":return -6;
+                case "r":return -7;
+                case "e":return -9;
+                default:return -1;
             }
         }
         return temp;
     }
 
-    void removeRelation() {
-        Relation r=relations.get(relations.size()-1);
+    void removeLastRelation() {
+        try {removeRelation(relations.get(relations.size()-1));}
+        catch (ArrayIndexOutOfBoundsException e){}
+    }
+
+    private void removeRelation(Relation r){
+        if(r==null)
+            return;
         ArrayList<Entity> e=r.getRelation();
         if(e.size()==1){
             Entity entity=e.get(0);
@@ -202,6 +305,7 @@ class Tokenizer {
             if(entityCount.get(entity.name)==1){
                 Keywords.removeClass(entity.name);
                 entityCount.remove(entity.name);
+                entities.remove(entity.name);
             }
             else entityCount.replace(entity.name,entityCount.get(entity.name)-1);
         }
@@ -218,6 +322,7 @@ class Tokenizer {
             }
         }
         relations.remove(r);
+        ambiguous=false;
     }
 }
 
@@ -315,12 +420,17 @@ class Relation{
      * Stores The Entities in a relation
      */
     private ArrayList<Entity> arrayList=new ArrayList<>();
+    private ArrayList<String> multiplicity=new ArrayList<>();
     private HashSet<String> attribute=new HashSet<>();
+
 
     private String relation="";
 
-    void addEntity(Entity entity){arrayList.add(entity);}
+    void addEntity(Entity entity){if(entity!=null) arrayList.add(entity);}
+
     void addAttribute(String att){attribute.add(att);}
+
+    void addMultiplicity(String mul){multiplicity.add(mul);}
 
     Entity getEntity() {return arrayList.size()>0?arrayList.get(arrayList.size()-1):null;}
 
@@ -331,6 +441,7 @@ class Relation{
     int getType() {return type;}
 
     HashSet<String> getAttributes(){return attribute;}
+
     void storeRelation(String s){relation=s;}
 
     @Override
@@ -338,8 +449,7 @@ class Relation{
         StringBuilder stringBuilder=new StringBuilder();
         if(type==1){
             stringBuilder.append("Aggregation between : ");
-            for (Entity entity:arrayList)
-                stringBuilder.append(entity.name).append(" ");
+            arrayList.forEach((s)->stringBuilder.append(s.name).append(" "));
         }
         else if(type==2){
             stringBuilder.append("Class ").append(arrayList.get(0).name)
@@ -348,8 +458,7 @@ class Relation{
         }
         else {
             stringBuilder.append("Class ").append(arrayList.get(0).name).append("\nAttributes");
-            for (String att : attribute)
-                stringBuilder.append(" ").append(att);
+            attribute.forEach((s)->stringBuilder.append(" ").append(s));
         }
         return stringBuilder.toString();
     }
