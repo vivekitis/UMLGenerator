@@ -25,9 +25,7 @@ class Tokenizer {
     //Determiner Tree
     private Tree determinerTree;
     private EntityTree entityTree;
-    //Array of Entities;
-    private HashMap<String,Entity> entities;
-    private HashMap<String,Integer> entityCount;
+
     private ArrayList<Relation> relations=new ArrayList<>();
     private Relation relation;
     private String[] words;
@@ -40,8 +38,6 @@ class Tokenizer {
         entityTree=new EntityTree();
         for(String [] a:array)
             determinerTree.insertWord(a[0],a[1]);
-        entities=new HashMap<>();
-        entityCount=new HashMap<>();
     }
 
     /**
@@ -56,7 +52,8 @@ class Tokenizer {
      */
     void analyzeSentence(String sentence) {
         sentence=sentence.trim();
-        words = sentence.split(" ");
+        words=splitSentence(sentence);
+        //words = sentence.split(" ");
         relation=new Relation();
         ambiguous=false;
 
@@ -78,10 +75,35 @@ class Tokenizer {
 
             //Store Relation -------------------------------------------------------------------------------------------
             saveRelation(verb);
+            if(ambiguous) {
+                //Undo Changes
+                removeRelation(relation);
+                return;
+            }
 
         }
         relations.add(relation);
         System.out.println(relation);
+    }
+
+    private String[] splitSentence(String sentence) {
+        ArrayList<String> temp=new ArrayList<>();
+        StringBuilder stringBuilder=new StringBuilder();
+        for(int i=0;i<sentence.length();i++){
+            char c=sentence.charAt(i);
+            if(c==' '){
+                temp.add(stringBuilder.toString());
+                stringBuilder.delete(0,stringBuilder.length());
+                while ((i<sentence.length())&&(sentence.charAt(i)==' '))
+                    i++;
+                i--;
+            }
+            else stringBuilder.append(c);
+        }
+        if(stringBuilder.length()>0)
+            temp.add(stringBuilder.toString());
+        String[] temp2=new String[temp.size()];
+        return temp.toArray(temp2);
     }
 
     private void getPhrase() {
@@ -96,7 +118,7 @@ class Tokenizer {
                 break;
             case 2:
                 if ((relation.getType() == 0) || (relation.getType() == 3)) {
-                    storeAttribute(words[currentWord++], relation.getEntity());
+                    storeAttribute(words[currentWord++], relation.getLastEntity());
                     relation.setType(3);
                 } else ambiguous = true;
                 break;
@@ -134,40 +156,39 @@ class Tokenizer {
     }
 
 
-    private void storeAttribute(String word, Entity entity) {
+    private void storeAttribute(String word, String entity) {
         if(ambiguous)
             return;
-        if((entity==null)){
+        if(entity==null){
             Entity entity1=new Entity("N*N"+(++undefineCount));
             undefineCount++;
             entity1.addAttribute(word);
-            relation.addEntity(entity1);
-            entities.put("NAN",entity1);
+            relation.addEntity(entity1.name);
+            entityTree.insertWord("N*N",entity1);
         }
         else {
-            entity.addAttribute(word);
-            Keywords.addAttribute(new KeywordLabel(word),entity.name);
+            EntityNode entityNode=entityTree.search(entity);
+            entityNode.entity.addAttribute(word);
+            Keywords.addAttribute(new KeywordLabel(word),entityNode.entity.name);
         }
         relation.addAttribute(word);
     }
 
-    private Entity storeEntity(String word) {
+    private String storeEntity(String word) {
         if(ambiguous)
             return null;
-        Entity entity=relation.getEntity();
-        if((entity!=null)&&(entity.name.startsWith("N*N"))){
+        EntityNode entity=entityTree.search(word);
+        if(entity==null||entity.entity==null)
+            entityTree.insertWord(word, new Entity(word));
+        else if(entity.entity.name.startsWith("N*N")){
             undefineCount--;
-            entity.name=word;
-            entityCount.replace(word,entityCount.get(word)+1);
-            return entity;
+            entity.entity.name=word;
+            entity.count++;
+            return entity.entity.name;
         }
-        if(!entities.containsKey(word)) {
-            entities.put(word, new Entity(word));
-            entityCount.put(word,1);
-        }
-        else entityCount.replace(word,entityCount.get(word)+1);
+        else entityTree.search(word).count++;
         Keywords.addClass(new KeywordLabel(word));
-        return entities.get(word);
+        return word;
     }
 
     private int checkEntity() {
@@ -291,45 +312,44 @@ class Tokenizer {
     }
 
     void removeLastRelation() {
-        try {removeRelation(relations.get(relations.size()-1));}
-        catch (ArrayIndexOutOfBoundsException e){}
+        if(relations.size()>0)
+            removeRelation(relations.get(relations.size()-1));
     }
 
     private void removeRelation(Relation r){
         if(r==null)
             return;
-        ArrayList<Entity> e=r.getRelation();
+        ArrayList<String> e=r.getRelation();
         if(e.size()==1){
-            Entity entity=e.get(0);
-            r.getAttributes().forEach(s -> Keywords.removeAttributes(s+" "+entity.name));
-            entity.removeAttributes(r.getAttributes());
-            if(entityCount.get(entity.name)==1){
-                Keywords.removeClass(entity.name);
-                entityCount.remove(entity.name);
-                entities.remove(entity.name);
+            EntityNode entity=entityTree.search(e.get(0));
+            r.getAttributes().forEach(s -> Keywords.removeAttributes(s+" "+entity.entity.name));
+            entity.entity.removeAttributes(r.getAttributes());
+            if(entity.count==1){
+                Keywords.removeClass(entity.entity.name);
+                entityTree.remove(entity.entity.name);
             }
-            else entityCount.replace(entity.name,entityCount.get(entity.name)-1);
+            else if(--entity.count==0) entity.entity=null;
         }
         else {
-            for (Entity ent :e) {
-                String s = ent.name;
-                if (entityCount.get(s) == 1) {
-                    entities.remove(s);
-                    entityCount.remove(s);
+            for (String  entityName :e) {
+                EntityNode ent=entityTree.search(entityName);
+                String s = ent.entity.name;
+                if (ent.count == 1) {
                     Keywords.removeClass(s);
-                    ent.getAttributes().forEach(s1 -> Keywords.removeAttributes(s1+" "+s));
+                    ent.entity.getAttributes().forEach(s1 -> Keywords.removeAttributes(s1+" "+s));
+                    entityTree.remove(s);
                 }
-                else entityCount.replace(s,entityCount.get(s)-1);
+                else if(--ent.count==0) ent.entity=null;
             }
         }
         relations.remove(r);
         ambiguous=false;
     }
 
-    void removeRelation(int i) {
+    /*void removeRelation(int i) {
         Relation r=relations.get(i);
         removeRelation(r);
-    }
+    }*/
 }
 class DeterminerNode{
     DeterminerNode left=null,equal=null,right=null;
@@ -399,22 +419,22 @@ class Relation{
     /**
      * Stores The Entities in a relation
      */
-    private ArrayList<Entity> arrayList=new ArrayList<>();
+    private ArrayList<String> arrayList=new ArrayList<>();
     private ArrayList<String> multiplicity=new ArrayList<>();
     private HashSet<String> attribute=new HashSet<>();
 
 
     private String relation="";
 
-    void addEntity(Entity entity){if(entity!=null) arrayList.add(entity);}
+    void addEntity(String  entity){if(entity!=null) arrayList.add(entity);}
 
     void addAttribute(String att){attribute.add(att);}
 
     void addMultiplicity(String mul){multiplicity.add(mul);}
 
-    Entity getEntity() {return arrayList.size()>0?arrayList.get(arrayList.size()-1):null;}
+    String getLastEntity() {return arrayList.size()>0?arrayList.get(arrayList.size()-1):null;}
 
-    ArrayList<Entity> getRelation(){return arrayList;}
+    ArrayList<String> getRelation(){return arrayList;}
 
     void setType(int type){this.type=type;}
 
@@ -429,15 +449,15 @@ class Relation{
         StringBuilder stringBuilder=new StringBuilder();
         if(type==1){
             stringBuilder.append("Aggregation between : ");
-            arrayList.forEach((s)->stringBuilder.append(s.name).append(" "));
+            arrayList.forEach((s)->stringBuilder.append(s).append(" "));
         }
         else if(type==2){
-            stringBuilder.append("Class ").append(arrayList.get(0).name)
+            stringBuilder.append("Class ").append(arrayList.get(0))
                     .append("\nRelation ").append(relation)
-                    .append("\nClass ").append(arrayList.get(1).name);
+                    .append("\nClass ").append(arrayList.get(1));
         }
         else {
-            stringBuilder.append("Class ").append(arrayList.get(0).name).append("\nAttributes");
+            stringBuilder.append("Class ").append(arrayList.get(0)).append("\nAttributes");
             attribute.forEach((s)->stringBuilder.append(" ").append(s));
         }
         return stringBuilder.toString();

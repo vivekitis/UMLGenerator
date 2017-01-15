@@ -35,6 +35,9 @@ class InputEditor extends JFrame{
         textScroll=new JScrollPane(textArea);
         contentPane=getContentPane();
         textArea.setBorder(new BevelBorder(BevelBorder.LOWERED));
+        textArea.setLineWrap(true);
+        Font f=textArea.getFont();
+        textArea.setFont(f.deriveFont(f.getSize()+10));
         textArea.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
@@ -42,11 +45,7 @@ class InputEditor extends JFrame{
                 //System.out.println("Len"+d.getLength());
                 try {
                     length=d.getLength();
-                    int offset=e.getOffset();
-                    if(offset<length){
-
-                    }
-                    else if(d.getText(length-1,1).equals(FULLSTOP)){
+                    if(d.getText(length-1,1).equals(FULLSTOP)){
                         int start=sentences.getSentenceStart(sentences.getSentenceCount());
                         String s=d.getText(start,length-start-1);
                         sentences.add(length-1);
@@ -62,9 +61,9 @@ class InputEditor extends JFrame{
             public void removeUpdate(DocumentEvent e) {
                 Document d=e.getDocument();
                 length=d.getLength();
-                int offset=e.getOffset(),i=1;
-                System.out.println("Offset "+offset+" Length "+length);
-                if(offset<length) {
+                //int offset=e.getOffset(),i=1;
+                //System.out.println("Offset "+offset+" Length "+length);
+                /*if(offset<length) {
                     while (offset < sentences.getSentenceStart(sentences.getSentenceCount() - i)) {
                         i++;
                         //tokenizer.removeRelation(sentences.getSentenceCount()-1);
@@ -72,10 +71,11 @@ class InputEditor extends JFrame{
                     }
                     tokenizer.removeRelation(sentences.getSentenceCount()-i+1);
                 }
-                else while(length<(sentences.getSentenceStart(sentences.getSentenceCount()))) {
+                else */
+                while(length<(sentences.getSentenceStart(sentences.getSentenceCount()))) {
                     tokenizer.removeLastRelation();
                     //tokenizer.analyzeSentence();
-                    //sentences.remove();
+                    sentences.remove();
                 }
                 //System.out.println("Len"+length);
             }
@@ -120,12 +120,10 @@ class InputEditor extends JFrame{
 }
 
 class SentenceArray{
-    //private ArrayList<String> sentences;
     private ArrayList<Integer> starts;
     private int sentence_count;
 
     SentenceArray(){
-        //sentences=new ArrayList<>();
         starts=new ArrayList<>();
         sentence_count=0;
         starts.add(0);
@@ -133,7 +131,6 @@ class SentenceArray{
 
     void add(int end){
         sentence_count++;
-        //sentences.add(s);
         starts.add(end+1);
     }
 
@@ -156,12 +153,11 @@ class SentenceArray{
         System.out.println("Remove");
         starts.remove(sentence_count);
         sentence_count--;
-        //sentences.remove(sentence_count);
     }
 
-    void remove(int n){
+    /*void remove(int n){
         System.out.println("Remove");
         starts.remove(n);
         sentence_count--;
-    }
+    }*/
 }

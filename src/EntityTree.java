@@ -1,9 +1,8 @@
-import java.util.ArrayList;
 import java.util.HashSet;
 
 /**
  * Created by vivek on 13-01-2017.
- * Entity
+ * Entity Base
  */
 
 class Entity {
@@ -36,25 +35,21 @@ class EntityNode{
     int count=0;
     Entity entity;
 
-    EntityNode(char data){this.data = data;}
+    EntityNode(char data){this.data = data;count=0;}
 
-    Entity createEntity(String name){
-        count=1;
-        entity=new Entity(name);
-        return entity;
-    }
+
 }
 
 class EntityTree{
-    EntityNode root;
+    private EntityNode root;
     private String word;
-    private String  val;
+    private Entity entity;
 
-    void insertWord(String word,String val){
+    void insertWord(String word,Entity entity){
         if((word==null)||(word.equals("")))
             return;
         this.word=word;
-        this.val=val;
+        this.entity=entity;
         root=insert(root,0);
     }
 
@@ -70,12 +65,17 @@ class EntityTree{
                 temp.equal=insert(temp.equal, ++i);
             else if(temp.entity!=null)
                 temp.count++;
-            else temp.createEntity(val);
+            else {
+                temp.entity = entity;
+                temp.count++;
+            }
         }
         return temp;
     }
 
-    Entity search(String word){
+    EntityNode search(String word){
+        if(word==null)
+            return null;
         EntityNode temp=root;
         for(int i=0;i<word.length();){
             if(temp!=null) {
@@ -90,7 +90,7 @@ class EntityTree{
             }
             else return null;
         }
-        return temp.entity;
+        return temp;
     }
 
     void remove(String word){
