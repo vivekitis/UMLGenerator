@@ -42,7 +42,11 @@ class InputEditor extends JFrame{
                 //System.out.println("Len"+d.getLength());
                 try {
                     length=d.getLength();
-                    if(d.getText(length-1,1).equals(FULLSTOP)){
+                    int offset=e.getOffset();
+                    if(offset<length){
+
+                    }
+                    else if(d.getText(length-1,1).equals(FULLSTOP)){
                         int start=sentences.getSentenceStart(sentences.getSentenceCount());
                         String s=d.getText(start,length-start-1);
                         sentences.add(length-1);
@@ -58,9 +62,20 @@ class InputEditor extends JFrame{
             public void removeUpdate(DocumentEvent e) {
                 Document d=e.getDocument();
                 length=d.getLength();
-                while(length<(sentences.getSentenceStart(sentences.getSentenceCount()))) {
+                int offset=e.getOffset(),i=1;
+                System.out.println("Offset "+offset+" Length "+length);
+                if(offset<length) {
+                    while (offset < sentences.getSentenceStart(sentences.getSentenceCount() - i)) {
+                        i++;
+                        //tokenizer.removeRelation(sentences.getSentenceCount()-1);
+                        //sentences.shift();
+                    }
+                    tokenizer.removeRelation(sentences.getSentenceCount()-i+1);
+                }
+                else while(length<(sentences.getSentenceStart(sentences.getSentenceCount()))) {
                     tokenizer.removeLastRelation();
-                    sentences.remove();
+                    //tokenizer.analyzeSentence();
+                    //sentences.remove();
                 }
                 //System.out.println("Len"+length);
             }
@@ -122,8 +137,17 @@ class SentenceArray{
         starts.add(end+1);
     }
 
+    /**
+     *
+     * @return sentence_count
+     */
     int getSentenceCount(){return sentence_count;}
 
+    /**
+     *
+     * @param n sentence number
+     * @return  starts.get(n)
+     */
     int getSentenceStart(int n){return starts.get(n);}
 
     //String getSentence(int n){return sentences.get(n);}
@@ -133,5 +157,11 @@ class SentenceArray{
         starts.remove(sentence_count);
         sentence_count--;
         //sentences.remove(sentence_count);
+    }
+
+    void remove(int n){
+        System.out.println("Remove");
+        starts.remove(n);
+        sentence_count--;
     }
 }

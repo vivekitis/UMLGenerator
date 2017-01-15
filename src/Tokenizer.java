@@ -24,7 +24,7 @@ class Tokenizer {
                                     ,{"EACH","e"}};
     //Determiner Tree
     private Tree determinerTree;
-
+    private EntityTree entityTree;
     //Array of Entities;
     private HashMap<String,Entity> entities;
     private HashMap<String,Integer> entityCount;
@@ -37,6 +37,7 @@ class Tokenizer {
 
     private Tokenizer(){
         determinerTree=new Tree();
+        entityTree=new EntityTree();
         for(String [] a:array)
             determinerTree.insertWord(a[0],a[1]);
         entities=new HashMap<>();
@@ -175,7 +176,7 @@ class Tokenizer {
         if(determiner!=-1) {
             currentWord++;
             if(determiner>0){
-                if(currentWord<words.length) {
+                if(currentWord<words.length+3) {
                     int _determiner = findDeterminer();
                     if(_determiner<-3){
                         currentWord++;
@@ -324,19 +325,23 @@ class Tokenizer {
         relations.remove(r);
         ambiguous=false;
     }
-}
 
-class Node{
-    Node left=null,equal=null,right=null;
+    void removeRelation(int i) {
+        Relation r=relations.get(i);
+        removeRelation(r);
+    }
+}
+class DeterminerNode{
+    DeterminerNode left=null,equal=null,right=null;
     String val="";
     char data;
-    Node(char data){
+    DeterminerNode(char data){
         this.data=data;
     }
 }
 
 class Tree{
-    private Node root;
+    private DeterminerNode root;
     private String word;
     private String  val;
     void insertWord(String word,String val){
@@ -347,9 +352,9 @@ class Tree{
         root=insert(root,0);
     }
 
-    private Node insert(Node temp, int i) {
+    private DeterminerNode insert(DeterminerNode temp, int i) {
         if(temp==null)
-            temp = new Node(word.charAt(i));
+            temp = new DeterminerNode(word.charAt(i));
         if(temp.data>word.charAt(i))
             temp.left=insert(temp.left, i);
         else if(temp.data<word.charAt(i))
@@ -363,7 +368,7 @@ class Tree{
     }
 
     String search(String word){
-        Node temp=root;
+        DeterminerNode temp=root;
         for(int i=0;i<word.length();){
             if(temp!=null) {
                 if (temp.data == word.charAt(i)) {
@@ -381,31 +386,6 @@ class Tree{
     }
 
 }
-
-class Entity{
-    String name;
-    private HashSet<String> attributes;
-    Entity(String entity){
-        name=entity;
-        attributes=new HashSet<>();
-    }
-
-    boolean addAttribute(String att){return attributes.add(att);}
-
-    void removeAttributes(HashSet<String> attributes) {this.attributes.removeAll(attributes);}
-
-    HashSet<String> getAttributes(){return attributes;}
-
-    @Override
-    public String toString() {
-        StringBuilder stringBuilder=new StringBuilder();
-        stringBuilder.append("Class ").append(name).append("\nAttribute");
-        for(String att:attributes)
-            stringBuilder.append(" ").append(att);
-        return stringBuilder.toString();
-    }
-}
-
 
 class Relation{
     /**
