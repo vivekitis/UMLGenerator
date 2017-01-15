@@ -25,7 +25,8 @@ class InputEditor extends JFrame{
     private JPanel centre;
     private Tokenizer tokenizer;
     private JScrollPane textScroll;
-
+    private Font font;
+    private int fontSize;
     private InputEditor(){
         super("untitled");
         sentences=new SentenceArray();
@@ -36,8 +37,8 @@ class InputEditor extends JFrame{
         contentPane=getContentPane();
         textArea.setBorder(new BevelBorder(BevelBorder.LOWERED));
         textArea.setLineWrap(true);
-        Font f=textArea.getFont();
-        textArea.setFont(f.deriveFont(f.getSize()+10));
+        font=textArea.getFont();
+        fontSize=font.getSize();
         textArea.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
@@ -94,6 +95,20 @@ class InputEditor extends JFrame{
         jMenu.setAccelerator(KeyStroke.getKeyStroke('X', KeyEvent.SHIFT_DOWN_MASK|KeyEvent.CTRL_DOWN_MASK));
         file.add(jMenu);
         jMenuBar.add(file);
+        JMenu fontMenu=new JMenu("Font Size");
+        JMenuItem sizes=new JMenuItem("+10");
+        sizes.addActionListener(e -> textArea.setFont(font.deriveFont(fontSize+10)));
+        fontMenu.add(sizes);
+        sizes=new JMenuItem("+15");
+        sizes.addActionListener(e -> textArea.setFont(font.deriveFont(fontSize+15)));
+        fontMenu.add(sizes);
+        sizes=new JMenuItem("+20");
+        sizes.addActionListener(e -> textArea.setFont(font.deriveFont(fontSize+20)));
+        fontMenu.add(sizes);
+        sizes=new JMenuItem("+25");
+        sizes.addActionListener(e -> textArea.setFont(font.deriveFont(fontSize+25)));
+        fontMenu.add(sizes);
+        jMenuBar.add(fontMenu);
         textArea.setMinimumSize(new Dimension(500,750));
         centre=new JPanel(new GridBagLayout());
     }
