@@ -1,3 +1,6 @@
+import knowledgeBase.DeterminerTree;
+import knowledgeBase.NumberConverter;
+
 import java.util.*;
 
 
@@ -12,18 +15,9 @@ class Tokenizer {
      */
     static Tokenizer getInstance(){return new Tokenizer();}
 
-    //List if Determiners
-    private static String[][] array={{"THE","1"},{"A","1"},{"AN","1"}
-                                    ,{"ANY","n"},{"ALL","n"},{"EVERY","n"}
-                                    ,{"FEW","n"},{"SOME","n"}
-                                    ,{"AT","m"},{"LEAST","m"},{"MOST","m"}
-                                    ,{"ATLEAST","q-"},{"ATMOST","q+"}
-                                    ,{"ONLY","k"},{"NONE","0"},{"OTHER","l"}
-                                    ,{"BETWEEN","r"},{"FROM","r"}
-                                    ,{"OR","o"},{"TO","o"}
-                                    ,{"EACH","e"}};
+
     //Determiner Tree
-    private Tree determinerTree;
+    private DeterminerTree determinerTree;
     private EntityTree entityTree;
 
     private ArrayList<Relation> relations=new ArrayList<>();
@@ -32,12 +26,12 @@ class Tokenizer {
     private boolean ambiguous;
     private int currentWord;
     private int undefineCount=0;
+    private NumberConverter numberConverter;
 
     private Tokenizer(){
-        determinerTree=new Tree();
+        determinerTree=DeterminerTree.getInstance();
         entityTree=new EntityTree();
-        for(String [] a:array)
-            determinerTree.insertWord(a[0],a[1]);
+        numberConverter=NumberConverter.getInstance();
     }
 
     /**
@@ -50,7 +44,7 @@ class Tokenizer {
      *
      * @param sentence sentence to analyze
      */
-    void analyzeSentence(String sentence) {
+    boolean analyzeSentence(String sentence) {
         sentence=sentence.trim();
         words=splitSentence(sentence);
         //words = sentence.split(" ");
@@ -63,14 +57,14 @@ class Tokenizer {
             if(ambiguous) {
                 //Undo Changes
                 removeRelation(relation);
-                return;
+                return ambiguous;
             }
             //Identity Relation-----------------------------------------------------------------------------------------
             String verb=getVerb();
             if(ambiguous) {
                 //Undo Changes
                 removeRelation(relation);
-                return;
+                return ambiguous;
             }
 
             //Store Relation -------------------------------------------------------------------------------------------
@@ -78,12 +72,13 @@ class Tokenizer {
             if(ambiguous) {
                 //Undo Changes
                 removeRelation(relation);
-                return;
+                return ambiguous;
             }
 
         }
         relations.add(relation);
         System.out.println(relation);
+        return ambiguous;
     }
 
     private String[] splitSentence(String sentence) {
@@ -271,6 +266,8 @@ class Tokenizer {
         if(ambiguous)
             return 0;
         int j=0;
+        if(currentWord>=words.length)
+            return 0;
         while((j<words[currentWord].length())&&(words[currentWord].charAt(j)< 93) && (words[currentWord].charAt(j) > 64))
             j++;
         if(j==1)
@@ -282,31 +279,65 @@ class Tokenizer {
 
 
     private int findDeterminer(){
-        int temp;
+        int temp=0;
         try {temp=Integer.parseInt(words[currentWord]);}
-        catch (NumberFormatException e){
-            String determiner = determinerTree.search(words[currentWord].toUpperCase());
-            switch (determiner) {
-                case "1":return 1;
-                case "":return -1;
-                case "n":return -8;
-                case "k":return -2;
-                case "0":return 0;
-                case "l":return -3;
-                case "m":currentWord++;
-                        if(currentWord<words.length) {
+        catch (Exception e){
+            while (currentWord<words.length){
+                int n=0;
+                int add=numberConverter.check(words[currentWord]);
+                if(add==0)
+                    break;
+                else if(add==1){
+                    n=numberConverter.calculate(n,words[currentWord++]);
+                    while ((currentWord<words.length)&&(numberConverter.check(words[currentWord])==2))
+                        n=numberConverter.calculate(n,words[currentWord++]);
+                    temp+=n;
+                }
+                else temp=numberConverter.calculate(1,words[currentWord++]);
+            }
+            if(temp!=0) {
+                System.out.println(temp);
+                currentWord--;
+                return temp;
+            }
+            else if(currentWord<words.length){
+                String determiner = determinerTree.search(words[currentWord].toUpperCase());
+                switch (determiner) {
+                    case "1":
+                        return 1;
+                    case "":
+                        return -1;
+                    case "n":
+                        return -8;
+                    case "k":
+                        return -2;
+                    case "0":
+                        return 0;
+                    case "l":
+                        return -3;
+                    case "m":
+                        currentWord++;
+                        if (currentWord < words.length) {
                             if (words[currentWord].toUpperCase().equals("MOST")) return -4;
-                            else if(words[currentWord].toUpperCase().equals("LEAST")) return -5;
+                            else if (words[currentWord].toUpperCase().equals("LEAST")) return -5;
                             return -1;
                         }
                         return -1;
-                case "q-":return -5;
-                case "q+":return -4;
-                case "o":return -6;
-                case "r":return -7;
-                case "e":return -9;
-                default:return -1;
+                    case "q-":
+                        return -5;
+                    case "q+":
+                        return -4;
+                    case "o":
+                        return -6;
+                    case "r":
+                        return -7;
+                    case "e":
+                        return -9;
+                    default:
+                        return -1;
+                }
             }
+            else return -1;
         }
         return temp;
     }
@@ -351,61 +382,7 @@ class Tokenizer {
         removeRelation(r);
     }*/
 }
-class DeterminerNode{
-    DeterminerNode left=null,equal=null,right=null;
-    String val="";
-    char data;
-    DeterminerNode(char data){
-        this.data=data;
-    }
-}
 
-class Tree{
-    private DeterminerNode root;
-    private String word;
-    private String  val;
-    void insertWord(String word,String val){
-        if((word==null)||(word.equals("")))
-            return;
-        this.word=word;
-        this.val=val;
-        root=insert(root,0);
-    }
-
-    private DeterminerNode insert(DeterminerNode temp, int i) {
-        if(temp==null)
-            temp = new DeterminerNode(word.charAt(i));
-        if(temp.data>word.charAt(i))
-            temp.left=insert(temp.left, i);
-        else if(temp.data<word.charAt(i))
-            temp.right=insert(temp.right, i);
-        else {
-            if(i!=word.length()-1)
-                temp.equal=insert(temp.equal, ++i);
-            else temp.val = val;
-        }
-        return temp;
-    }
-
-    String search(String word){
-        DeterminerNode temp=root;
-        for(int i=0;i<word.length();){
-            if(temp!=null) {
-                if (temp.data == word.charAt(i)) {
-                    if(++i==word.length())
-                        break;
-                    temp = temp.equal;
-                }
-                else if (temp.data < word.charAt(i))
-                    temp = temp.right;
-                else temp = temp.left;
-            }
-            else return "";
-        }
-        return temp.val;
-    }
-
-}
 
 class Relation{
     /**

@@ -2,6 +2,7 @@ import javax.swing.*;
 import javax.swing.border.BevelBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import java.awt.*;
@@ -36,7 +37,7 @@ class InputEditor extends JFrame{
         textScroll=new JScrollPane(textArea);
         contentPane=getContentPane();
         textArea.setBorder(new BevelBorder(BevelBorder.LOWERED));
-        textArea.setLineWrap(true);
+        //textArea.setLineWrap(true);
         font=textArea.getFont();
         fontSize=font.getSize();
         textArea.getDocument().addDocumentListener(new DocumentListener() {
@@ -51,8 +52,8 @@ class InputEditor extends JFrame{
                         String s=d.getText(start,length-start-1);
                         sentences.add(length-1);
                         System.out.println(s);
-                        tokenizer.analyzeSentence(s);
-                        SwingUtilities.invokeLater(()->textArea.insert("",length));
+                        boolean ambiguous=tokenizer.analyzeSentence(s);
+                        //SwingUtilities.invokeLater(()->textArea.insert(" ",length));
                     }
                 }
                 catch (BadLocationException e1) {e1.printStackTrace();}
