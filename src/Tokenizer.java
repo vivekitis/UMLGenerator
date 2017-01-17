@@ -23,7 +23,7 @@ class Tokenizer {
     private ArrayList<Relation> relations=new ArrayList<>();
     private Relation relation;
     private String[] words;
-    private boolean ambiguous;
+    static boolean ambiguous;
     private int currentWord;
     private int undefineCount=0;
     private NumberConverter numberConverter;
@@ -122,15 +122,30 @@ class Tokenizer {
 
     private String getVerb(){
         StringBuilder stringBuilder = new StringBuilder();
-        while (!ambiguous&&(currentWord < words.length) && (checkEntity() == 0)) {
+        while (!ambiguous&&(currentWord < words.length) && (findDeterminer() == -1) && (scanEntity()==0)) {
             stringBuilder.append(words[currentWord++]).append(" ");
         }
         return stringBuilder.toString();
     }
 
+    private int scanEntity() {
+        int j=0;
+        if(currentWord>=words.length)
+            return 0;
+        while((j<words[currentWord].length())&&(words[currentWord].charAt(j)< 93) && (words[currentWord].charAt(j) > 64))
+            j++;
+        if(j==1)
+            return 2;
+        if(j==words[currentWord].length())
+            return 1;
+        return 0;
+    }
+
     private void saveRelation(String verb){
         switch (verb.trim()){
-            case ""     :break;
+            case ""     :if(currentWord<words.length)
+                            ambiguous=true;
+                        break;
             case "and"  :getPhrase();
                         if(ambiguous) {
                             removeRelation(relation);
@@ -265,16 +280,7 @@ class Tokenizer {
         }
         if(ambiguous)
             return 0;
-        int j=0;
-        if(currentWord>=words.length)
-            return 0;
-        while((j<words[currentWord].length())&&(words[currentWord].charAt(j)< 93) && (words[currentWord].charAt(j) > 64))
-            j++;
-        if(j==1)
-            return 2;
-        if(j==words[currentWord].length())
-            return 1;
-        return 0;
+        return scanEntity();
     }
 
 
@@ -296,7 +302,6 @@ class Tokenizer {
                 else temp=numberConverter.calculate(1,words[currentWord++]);
             }
             if(temp!=0) {
-                System.out.println(temp);
                 currentWord--;
                 return temp;
             }
@@ -374,8 +379,11 @@ class Tokenizer {
             }
         }
         relations.remove(r);
-        ambiguous=false;
     }
+
+    int getCurrentWord() {return currentWord;}
+
+    String[] getWords() {return words;}
 
     /*void removeRelation(int i) {
         Relation r=relations.get(i);
@@ -424,6 +432,8 @@ class Relation{
     @Override
     public String toString() {
         StringBuilder stringBuilder=new StringBuilder();
+        if(Tokenizer.ambiguous)
+            return "Ambiguous";
         if(type==1){
             stringBuilder.append("Aggregation between : ");
             arrayList.forEach((s)->stringBuilder.append(s).append(" "));
@@ -434,8 +444,10 @@ class Relation{
                     .append("\nClass ").append(arrayList.get(1));
         }
         else {
-            stringBuilder.append("Class ").append(arrayList.get(0)).append("\nAttributes");
-            attribute.forEach((s)->stringBuilder.append(" ").append(s));
+            if(arrayList.size()>0) {
+                stringBuilder.append("Class ").append(arrayList.get(0)).append("\nAttributes");
+                attribute.forEach((s) -> stringBuilder.append(" ").append(s));
+            }
         }
         return stringBuilder.toString();
     }

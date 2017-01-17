@@ -2,9 +2,7 @@ import javax.swing.*;
 import javax.swing.border.BevelBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.text.AttributeSet;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.Document;
+import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
@@ -18,42 +16,55 @@ class InputEditor extends JFrame{
     private int length=0;
     private SentenceArray sentences;
     private String FULLSTOP=".";
-    private JTextArea textArea;
+    private JTextPane textPane;
     private Container contentPane;
-    private JMenuBar jMenuBar;
+    private JMenuBar menuBar;
     private Component vstrut,hstrut;
     private Keywords keywords;
-    private JPanel centre;
     private Tokenizer tokenizer;
     private JScrollPane textScroll;
+    private JSplitPane splitPane;
+    private AbstractDocument document;
     private Font font;
     private int fontSize;
+    private boolean update=false;
     private InputEditor(){
         super("untitled");
         sentences=new SentenceArray();
         setSize(800,800);
         keywords=Keywords.getInstance();
-        textArea=new JTextArea();
-        textScroll=new JScrollPane(textArea);
+        textPane=new JTextPane();
+        textScroll=new JScrollPane(textPane);
         contentPane=getContentPane();
-        textArea.setBorder(new BevelBorder(BevelBorder.LOWERED));
-        //textArea.setLineWrap(true);
-        font=textArea.getFont();
+        textPane.setBorder(new BevelBorder(BevelBorder.LOWERED));
+        font=textPane.getFont();
         fontSize=font.getSize();
-        textArea.getDocument().addDocumentListener(new DocumentListener() {
+        document=(AbstractDocument)textPane.getDocument();
+        document.addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
-                Document d=e.getDocument();
+                if(update)
+                    return;
                 //System.out.println("Len"+d.getLength());
                 try {
-                    length=d.getLength();
-                    if(d.getText(length-1,1).equals(FULLSTOP)){
+                    length=document.getLength();
+                    //System.out.println(length);
+                    if(document.getText(length-1,1).equals(FULLSTOP)){
                         int start=sentences.getSentenceStart(sentences.getSentenceCount());
-                        String s=d.getText(start,length-start-1);
-                        sentences.add(length-1);
-                        System.out.println(s);
-                        boolean ambiguous=tokenizer.analyzeSentence(s);
-                        //SwingUtilities.invokeLater(()->textArea.insert(" ",length));
+                        String s=document.getText(start,length-start-1);
+                        //sentences.add(length);
+                        tokenizer.analyzeSentence(s);
+                        update=true;
+                        SwingUtilities.invokeLater(() -> {
+                            try {
+                                document.remove(start, length - start);
+                                int temp=insertString(tokenizer.getCurrentWord(),start,tokenizer.getWords());
+                                sentences.add(temp);
+                            }
+                            catch (BadLocationException e1) {e1.printStackTrace();}
+                        });
+                        //System.out.println(start+" "+(length-start-1));
+
                     }
                 }
                 catch (BadLocationException e1) {e1.printStackTrace();}
@@ -61,8 +72,10 @@ class InputEditor extends JFrame{
 
             @Override
             public void removeUpdate(DocumentEvent e) {
-                Document d=e.getDocument();
-                length=d.getLength();
+                if (update)
+                    return;
+                //Document d=e.getDocument();
+                length=document.getLength();
                 //int offset=e.getOffset(),i=1;
                 //System.out.println("Offset "+offset+" Length "+length);
                 /*if(offset<length) {
@@ -87,7 +100,7 @@ class InputEditor extends JFrame{
 
             }
         });
-        jMenuBar=new JMenuBar();
+        menuBar=new JMenuBar();
         vstrut=Box.createVerticalStrut(10);
         hstrut=Box.createHorizontalStrut(10);
         JMenu file=new JMenu("File");
@@ -95,43 +108,62 @@ class InputEditor extends JFrame{
         jMenu.addActionListener(e -> System.exit(0));
         jMenu.setAccelerator(KeyStroke.getKeyStroke('X', KeyEvent.SHIFT_DOWN_MASK|KeyEvent.CTRL_DOWN_MASK));
         file.add(jMenu);
-        jMenuBar.add(file);
+        menuBar.add(file);
         JMenu fontMenu=new JMenu("Font Size");
         JMenuItem sizes=new JMenuItem("+10");
-        sizes.addActionListener(e -> textArea.setFont(font.deriveFont(fontSize+10)));
+        sizes.addActionListener(e -> textPane.setFont(font.deriveFont(fontSize+10)));
         fontMenu.add(sizes);
         sizes=new JMenuItem("+15");
-        sizes.addActionListener(e -> textArea.setFont(font.deriveFont(fontSize+15)));
+        sizes.addActionListener(e -> textPane.setFont(font.deriveFont(fontSize+15)));
         fontMenu.add(sizes);
         sizes=new JMenuItem("+20");
-        sizes.addActionListener(e -> textArea.setFont(font.deriveFont(fontSize+20)));
+        sizes.addActionListener(e -> textPane.setFont(font.deriveFont(fontSize+20)));
         fontMenu.add(sizes);
         sizes=new JMenuItem("+25");
-        sizes.addActionListener(e -> textArea.setFont(font.deriveFont(fontSize+25)));
+        sizes.addActionListener(e -> textPane.setFont(font.deriveFont(fontSize+25)));
         fontMenu.add(sizes);
-        jMenuBar.add(fontMenu);
-        textArea.setMinimumSize(new Dimension(500,750));
-        centre=new JPanel(new GridBagLayout());
+        menuBar.add(fontMenu);
+        textPane.setMinimumSize(new Dimension(500,750));
+        splitPane=new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
     }
+
+    private int insertString(int currentWord, int start, String[] words) throws BadLocationException {
+        StringBuilder stringBuilder=new StringBuilder();
+        int offset=0,offset2=0;
+        SimpleAttributeSet attributeSet=new SimpleAttributeSet();
+        for(int i=0;i<currentWord;i++) {
+            stringBuilder.append(" ").append(words[i]);
+            offset+=(words[i].length()+1);
+        }
+        document.insertString(start,stringBuilder.toString(),attributeSet);
+        stringBuilder.delete(0,offset);
+        for (int i=currentWord;i<words.length;i++) {
+            stringBuilder.append(" ").append(words[i]);
+            offset2+=(words[i].length()+1);
+        }
+
+        StyleConstants.setUnderline(attributeSet,true);
+        document.insertString(start+offset,stringBuilder.toString(),attributeSet);
+        StyleConstants.setUnderline(attributeSet,false);
+        document.insertString(start+offset+offset2,".",attributeSet);
+        update=false;
+        return start+offset+offset2;
+    }
+
     static InputEditor getInstance(){return new InputEditor();}
 
     void showEditor(Tokenizer tokenizer) {
         this.tokenizer=tokenizer;
         contentPane.add(vstrut,BorderLayout.NORTH);
         contentPane.add(hstrut,BorderLayout.WEST);
-        GridBagConstraints bagConstraints=new GridBagConstraints();
-        bagConstraints.fill=GridBagConstraints.BOTH;
-        bagConstraints.weightx=0.67;
-        bagConstraints.weighty=0;
-        centre.add(textScroll,bagConstraints);
-        bagConstraints.weightx=0.33;
-        bagConstraints.weighty=1;
-        centre.add(keywords.getScroll(),bagConstraints);
-        contentPane.add(centre,BorderLayout.CENTER);
+        splitPane.setLeftComponent(textScroll);
+        splitPane.setRightComponent(keywords.getScroll());
+        contentPane.add(splitPane,BorderLayout.CENTER);
         contentPane.add(vstrut,BorderLayout.SOUTH);
         contentPane.add(hstrut, BorderLayout.EAST);
-        setJMenuBar(jMenuBar);
+        setJMenuBar(menuBar);
         setVisible(true);
+        splitPane.setDividerLocation(.66);
     }
 }
 
